@@ -3,8 +3,8 @@ spring:
     name: hangplan
   datasource:
     url: jdbc:postgresql://localhost:5432/hangplan
-    username: postgres
-    password: postgres
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
