@@ -1,0 +1,69 @@
+package com.hangplan.controller;
+
+import com.hangplan.dto.EventDtos;
+import com.hangplan.service.EventService;
+import com.hangplan.security.HangplanUserPrincipal;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequiredArgsConstructor
+public class EventController {
+
+    private final EventService eventService;
+
+    @PostMapping("/events")
+    @ResponseStatus(HttpStatus.CREATED)
+    public EventDtos.EventResponse create(
+            @Valid @RequestBody EventDtos.CreateEventRequest request,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        return eventService.create(request, auth);
+    }
+
+    @GetMapping("/events/{id}")
+    public EventDtos.EventResponse get(@PathVariable UUID id) {
+        return eventService.get(id);
+    }
+
+    @PostMapping("/events/{id}/join")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void join(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        eventService.join(id, auth);
+    }
+
+    @PostMapping("/events/{id}/expenses")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void addExpense(
+            @PathVariable UUID id,
+            @Valid @RequestBody EventDtos.CreateExpenseRequest request,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        eventService.addExpense(id, request, auth);
+    }
+
+    @GetMapping("/events/{id}/expenses")
+    public List<EventDtos.ExpenseView> listExpenses(@PathVariable UUID id) {
+        return eventService.listExpenses(id);
+    }
+
+    @GetMapping("/events/{id}/summary")
+    public EventDtos.SummaryResponse summary(@PathVariable UUID id) {
+        return eventService.summary(id);
+    }
+}
