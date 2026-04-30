@@ -3,6 +3,7 @@ package com.hangplan.config;
 import com.hangplan.security.JwtAuthFilter;
 import com.hangplan.security.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,17 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
+    private String googleClientId;
+    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
+    private String googleClientSecret;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        boolean googleOAuthEnabled = hasValue(googleClientId) && hasValue(googleClientSecret)
+                && !"change-me".equals(googleClientId)
+                && !"change-me".equals(googleClientSecret);
+
         http
                 .cors(c -> {})
                 .csrf(c -> c.disable())
@@ -37,9 +46,17 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(o -> o.successHandler(oAuth2SuccessHandler))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                );
+
+        if (googleOAuthEnabled) {
+            http.oauth2Login(o -> o.successHandler(oAuth2SuccessHandler));
+        }
+
+        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank();
     }
 }
