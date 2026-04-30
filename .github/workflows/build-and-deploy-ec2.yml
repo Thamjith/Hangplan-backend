@@ -55,13 +55,12 @@ jobs:
 
       - name: Create backend runtime env file
         run: |
-          cat <<EOF > backend.env
-          DB_USERNAME=${{ secrets.DB_USERNAME }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          EOF
+          : > backend.env
+          printf 'DB_USERNAME=%q\n' "${{ secrets.DB_USERNAME }}" >> backend.env
+          printf 'DB_PASSWORD=%q\n' "${{ secrets.DB_PASSWORD }}" >> backend.env
+          printf 'GOOGLE_CLIENT_ID=%q\n' "${{ secrets.GOOGLE_CLIENT_ID }}" >> backend.env
+          printf 'GOOGLE_CLIENT_SECRET=%q\n' "${{ secrets.GOOGLE_CLIENT_SECRET }}" >> backend.env
+          printf 'JWT_SECRET=%q\n' "${{ secrets.JWT_SECRET }}" >> backend.env
 
       - name: Copy backend artifact to EC2
         env:
