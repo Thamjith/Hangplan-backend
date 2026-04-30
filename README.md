@@ -11,10 +11,15 @@ Spring Boot API for HangPlan.
 ## Database setup
 
 1. Create a PostgreSQL database named `hangplan` (or your preferred name).
-2. Update datasource values in `src/main/resources/application.yml` if needed:
-   - `spring.datasource.url`
-   - `spring.datasource.username`
-   - `spring.datasource.password`
+2. Create a local override file `src/main/resources/application-local.yml` (gitignored) and put local DB credentials there:
+
+```yaml
+spring:
+  datasource:
+    username: your_local_db_user
+    password: your_local_db_password
+```
+
 3. For Google sign-in, set:
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
@@ -27,7 +32,7 @@ Google OAuth redirect URL for local development:
 
 ```bash
 mvn clean install
-mvn spring-boot:run
+SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 ```
 
 API base URL: `http://localhost:8080`
