@@ -38,6 +38,7 @@ public final class AuthDtos {
         private String name;
         private String email;
         private AuthProvider provider;
+        private boolean isPremium;
     }
 
     @Data

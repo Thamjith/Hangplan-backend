@@ -36,3 +36,42 @@ SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 ```
 
 API base URL: `http://localhost:8080`
+
+## Real-time Updates & Subscription Model
+
+HangPlan now supports two update modes:
+
+- Free users (`is_premium = false`) use manual refresh.
+- Premium users (`is_premium = true`) can subscribe to real-time updates.
+
+### Database flag
+
+Default users stay on the free tier.
+
+```sql
+ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT FALSE;
+```
+
+### WebSocket flow (high-level)
+
+- Endpoint: `/ws`
+- Topic pattern: `/topic/events/{eventId}`
+- Event mutations (join/decline/add expense/create) publish to this topic.
+- Subscription is gated server-side: only premium users can subscribe.
+
+### Where logic lives
+
+- Premium flag: `User` entity + auth DTOs (`AuthDtos.UserDto` / `AuthService`).
+- WebSocket infra and premium gating:
+  - `config/WebSocketConfig`
+  - `realtime/WebSocketAuthChannelInterceptor`
+  - `realtime/EventRealtimeService`
+- Event broadcasts are triggered from `EventController`.
+
+### Manual test checklist
+
+1. Login with a free user (`is_premium = false`) and open an event page.
+2. Confirm no real-time subscription is made; use manual refresh to see changes.
+3. Mark another user as premium (`is_premium = true`) in DB and log in.
+4. Open the same event on two premium sessions.
+5. Perform join/decline/add expense in one session and verify the other session updates immediately.

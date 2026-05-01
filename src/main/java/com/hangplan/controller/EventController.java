@@ -1,6 +1,7 @@
 package com.hangplan.controller;
 
 import com.hangplan.dto.EventDtos;
+import com.hangplan.realtime.EventRealtimeService;
 import com.hangplan.service.EventService;
 import com.hangplan.security.HangplanUserPrincipal;
 import jakarta.validation.Valid;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class EventController {
 
     private final EventService eventService;
+    private final EventRealtimeService eventRealtimeService;
 
     @PostMapping("/events")
     @ResponseStatus(HttpStatus.CREATED)
@@ -29,7 +31,9 @@ public class EventController {
             @Valid @RequestBody EventDtos.CreateEventRequest request,
             @AuthenticationPrincipal HangplanUserPrincipal auth
     ) {
-        return eventService.create(request, auth);
+        EventDtos.EventResponse response = eventService.create(request, auth);
+        eventRealtimeService.publishEventUpdated(UUID.fromString(response.getId()));
+        return response;
     }
 
     @GetMapping("/events/{id}")
@@ -49,6 +53,7 @@ public class EventController {
             @AuthenticationPrincipal HangplanUserPrincipal auth
     ) {
         eventService.join(id, auth);
+        eventRealtimeService.publishEventUpdated(id);
     }
 
     @PostMapping("/events/{id}/decline")
@@ -58,6 +63,7 @@ public class EventController {
             @AuthenticationPrincipal HangplanUserPrincipal auth
     ) {
         eventService.decline(id, auth);
+        eventRealtimeService.publishEventUpdated(id);
     }
 
     @PostMapping("/events/{id}/expenses")
@@ -68,6 +74,7 @@ public class EventController {
             @AuthenticationPrincipal HangplanUserPrincipal auth
     ) {
         eventService.addExpense(id, request, auth);
+        eventRealtimeService.publishEventUpdated(id);
     }
 
     @GetMapping("/events/{id}/expenses")

@@ -42,4 +42,8 @@ public class User {
     @Column(nullable = false)
     @Builder.Default
     private AuthProvider provider = AuthProvider.LOCAL;
+
+    @Column(name = "is_premium", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean isPremium = false;
 }

@@ -31,6 +31,24 @@
 - Schema update mode is Hibernate `ddl-auto: update`
 - Keep secrets and local credentials out of git.
 
+## Subscription Handling
+- `users.is_premium` is the current subscription feature flag.
+- Default value is `FALSE` (free tier by default).
+- Use this flag to gate real-time behavior only; avoid scattering tier checks.
+
+## Real-time Architecture
+- WebSocket endpoint: `/ws`
+- Topic pattern: `/topic/events/{eventId}`
+- Premium users are allowed to subscribe.
+- Free users are rejected/ignored at subscription time.
+- Event changes are published by `EventRealtimeService` after event mutations.
+
+## Developer Notes
+- Do not reintroduce polling on API endpoints for event detail updates.
+- Keep WebSocket auth/subscription checks in dedicated real-time components.
+- Preserve manual refresh fallback behavior for free users.
+- This flag is temporary and will evolve into a fuller subscription system.
+
 ## Coding Guidelines for Agents
 - Keep controllers thin; put logic in services.
 - Reuse DTOs in `EventDtos` for API contracts.
