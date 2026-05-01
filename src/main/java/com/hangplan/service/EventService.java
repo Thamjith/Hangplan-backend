@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -61,6 +62,40 @@ public class EventService {
         return toEventResponse(id);
     }
 
+    @Transactional(readOnly = true)
+    public EventDtos.MyEventsResponse listMine(HangplanUserPrincipal auth) {
+        UUID uid = auth.getId();
+        List<EventDtos.MyEventSummary> events = eventRepository.findDistinctEventsWhereUserParticipates(uid).stream()
+                .map(ev -> toMySummary(ev, uid))
+                .toList();
+        return EventDtos.MyEventsResponse.builder()
+                .events(events)
+                .build();
+    }
+
+    @Transactional
+    public void decline(UUID eventId, HangplanUserPrincipal auth) {
+        Event e = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        if (e.getCreatedBy().getId().equals(auth.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot decline your own event");
+        }
+        Optional<Participant> existing = participantRepository.findByEventIdAndUserId(eventId, auth.getId());
+        if (existing.isPresent()) {
+            Participant participant = existing.get();
+            if (participant.getStatus() == ParticipantStatus.ACCEPTED) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Already joined this event");
+            }
+            return;
+        }
+        User user = userRepository.getReferenceById(auth.getId());
+        participantRepository.save(Participant.builder()
+                .event(e)
+                .user(user)
+                .status(ParticipantStatus.DECLINED)
+                .build());
+    }
+
     @Transactional
     public void join(UUID eventId, HangplanUserPrincipal auth) {
         Event e = eventRepository.findById(eventId)
@@ -68,9 +103,29 @@ public class EventService {
         if (e.getStatus() == EventStatus.CLOSED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is closed");
         }
-        if (participantRepository.findByEventIdAndUserId(eventId, auth.getId()).isPresent()) {
+
+        Optional<Participant> existingOpt = participantRepository.findByEventIdAndUserId(eventId, auth.getId());
+        if (existingOpt.isPresent()) {
+            Participant existing = existingOpt.get();
+            if (existing.getStatus() == ParticipantStatus.ACCEPTED) {
+                return;
+            }
+            int accepted = participantRepository.countByEventAndStatus(e, ParticipantStatus.ACCEPTED);
+            if (accepted >= e.getMaxParticipants()) {
+                e.setStatus(EventStatus.CLOSED);
+                eventRepository.save(e);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is full");
+            }
+            existing.setStatus(ParticipantStatus.ACCEPTED);
+            participantRepository.save(existing);
+            int after = accepted + 1;
+            if (after >= e.getMaxParticipants()) {
+                e.setStatus(EventStatus.CLOSED);
+                eventRepository.save(e);
+            }
             return;
         }
+
         int accepted = participantRepository.countByEventAndStatus(e, ParticipantStatus.ACCEPTED);
         if (accepted >= e.getMaxParticipants()) {
             e.setStatus(EventStatus.CLOSED);
@@ -181,6 +236,17 @@ public class EventService {
                 .description(ex.getDescription())
                 .paidByParticipantId(ex.getPaidBy().getId().toString())
                 .paidByName(ex.getPaidBy().getUser().getName())
+                .build();
+    }
+
+    private EventDtos.MyEventSummary toMySummary(Event e, UUID viewerId) {
+        return EventDtos.MyEventSummary.builder()
+                .id(e.getId().toString())
+                .title(e.getTitle())
+                .status(e.getStatus())
+                .createdAt(e.getCreatedAt().toString())
+                .createdByName(e.getCreatedBy().getName())
+                .createdByMe(e.getCreatedBy().getId().equals(viewerId))
                 .build();
     }
 

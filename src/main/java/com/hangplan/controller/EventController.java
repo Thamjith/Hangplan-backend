@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,6 +37,11 @@ public class EventController {
         return eventService.get(id);
     }
 
+    @GetMapping("/events/self")
+    public EventDtos.MyEventsResponse mine(@AuthenticationPrincipal HangplanUserPrincipal auth) {
+        return eventService.listMine(auth);
+    }
+
     @PostMapping("/events/{id}/join")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void join(
@@ -45,6 +49,15 @@ public class EventController {
             @AuthenticationPrincipal HangplanUserPrincipal auth
     ) {
         eventService.join(id, auth);
+    }
+
+    @PostMapping("/events/{id}/decline")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void decline(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        eventService.decline(id, auth);
     }
 
     @PostMapping("/events/{id}/expenses")

@@ -84,4 +84,21 @@ public final class EventDtos {
         private String share;
         private String balance;
     }
+
+    @Data
+    @Builder
+    public static class MyEventSummary {
+        private String id;
+        private String title;
+        private EventStatus status;
+        private String createdAt;
+        private String createdByName;
+        private boolean createdByMe;
+    }
+
+    @Data
+    @Builder
+    public static class MyEventsResponse {
+        private List<MyEventSummary> events;
+    }
 }
