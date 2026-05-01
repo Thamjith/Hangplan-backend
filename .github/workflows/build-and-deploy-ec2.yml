@@ -61,6 +61,7 @@ jobs:
           printf 'GOOGLE_CLIENT_ID=%q\n' "${{ secrets.GOOGLE_CLIENT_ID || 'change-me' }}" >> backend.env
           printf 'GOOGLE_CLIENT_SECRET=%q\n' "${{ secrets.GOOGLE_CLIENT_SECRET || 'change-me' }}" >> backend.env
           printf 'JWT_SECRET=%q\n' "${{ secrets.JWT_SECRET }}" >> backend.env
+          printf 'FRONTEND_URL=%q\n' "${{ vars.FRONTEND_URL || 'https://hangplan.in' }}" >> backend.env
 
       - name: Copy backend artifact to EC2
         env:

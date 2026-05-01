@@ -25,7 +25,7 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:hangplan-jwt-dev-secret-please-replace-32chars min}
-  frontend-url: http://localhost:5173
+  frontend-url: ${FRONTEND_URL:https://hangplan.in}
 
 server:
   port: 8080
