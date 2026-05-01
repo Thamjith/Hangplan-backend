@@ -1,6 +1,7 @@
 package com.hangplan.dto;
 
 import com.hangplan.entity.AuthProvider;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
@@ -38,7 +39,8 @@ public final class AuthDtos {
         private String name;
         private String email;
         private AuthProvider provider;
-        private boolean isPremium;
+        @JsonProperty("isPremium")
+        private boolean premium;
     }
 
     @Data
