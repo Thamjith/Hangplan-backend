@@ -18,6 +18,9 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID:change-me}
             client-secret: ${GOOGLE_CLIENT_SECRET:change-me}
             scope: openid, profile, email
+            # Behind nginx without correct forwarded Host/proto, Spring may think this host is localhost:8080.
+            # Production (Option A): https://api.hangplan.in/login/oauth2/code/google — set via OAUTH2_REDIRECT_URI on EC2.
+            redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
         provider:
           google:
             user-name-attribute: sub

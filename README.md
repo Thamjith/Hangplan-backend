@@ -25,8 +25,12 @@ spring:
    - `GOOGLE_CLIENT_SECRET`
 4. Optional for production: set a strong `JWT_SECRET`.
 
-Google OAuth redirect URL for local development:
-`http://localhost:8080/login/oauth2/code/google`
+Google OAuth redirect URLs:
+
+- Local default (when `OAUTH2_REDIRECT_URI` is unset): `http://localhost:8080/login/oauth2/code/google`
+- Production (API subdomain): `https://api.hangplan.in/login/oauth2/code/google`
+
+Register both in Google Cloud Console and set **`OAUTH2_REDIRECT_URI`** on the server when Spring sits behind nginx but still resolves requests as `localhost:8080` (otherwise Google gets the wrong `redirect_uri`).
 
 ## Run in development
 

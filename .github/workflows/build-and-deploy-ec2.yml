@@ -62,6 +62,7 @@ jobs:
           printf 'GOOGLE_CLIENT_SECRET=%q\n' "${{ secrets.GOOGLE_CLIENT_SECRET || 'change-me' }}" >> backend.env
           printf 'JWT_SECRET=%q\n' "${{ secrets.JWT_SECRET }}" >> backend.env
           printf 'FRONTEND_URL=%q\n' "${{ vars.FRONTEND_URL || 'https://hangplan.in' }}" >> backend.env
+          printf 'OAUTH2_REDIRECT_URI=%q\n' "${{ vars.OAUTH2_REDIRECT_URI || 'https://api.hangplan.in/login/oauth2/code/google' }}" >> backend.env
 
       - name: Copy backend artifact to EC2
         env:
