@@ -3,6 +3,7 @@ package com.hangplan.security;
 import com.hangplan.entity.AuthProvider;
 import com.hangplan.entity.User;
 import com.hangplan.repository.UserRepository;
+import com.hangplan.service.SubscriptionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final SubscriptionService subscriptionService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -48,12 +50,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         final String displayName = (rawName == null || rawName.isBlank()) ? email : rawName;
         String emailNorm = email.trim().toLowerCase();
         User user = userRepository.findByEmailIgnoreCase(emailNorm)
-                .orElseGet(() -> userRepository.save(User.builder()
-                        .name(displayName)
-                        .email(emailNorm)
-                        .password(null)
-                        .provider(AuthProvider.GOOGLE)
-                        .build()));
+                .orElseGet(() -> {
+                    User created = User.builder()
+                            .name(displayName)
+                            .email(emailNorm)
+                            .password(null)
+                            .provider(AuthProvider.GOOGLE)
+                            .build();
+                    subscriptionService.assignFreePlan(created);
+                    return userRepository.save(created);
+                });
         String token = jwtService.createToken(user);
         if (request.getSession(false) != null) {
             request.getSession().invalidate();

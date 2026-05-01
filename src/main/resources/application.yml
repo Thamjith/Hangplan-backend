@@ -10,6 +10,11 @@ spring:
       ddl-auto: update
     show-sql: true
     open-in-view: false
+  flyway:
+    # Existing DBs were created before Flyway (e.g. Hibernate only): allow first migrate without failing.
+    baseline-on-migrate: true
+    # Default baseline is 1, which would skip V1__*.sql; 0 ensures subscription migration still runs.
+    baseline-version: 0
   security:
     oauth2:
       client:

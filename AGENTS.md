@@ -10,6 +10,7 @@
 - Spring Web, Data JPA, Security, OAuth2 Client, Validation
 - PostgreSQL
 - JWT (`jjwt`)
+- Flyway (schema migrations under `src/main/resources/db/migration`)
 
 ## Key Paths
 - `src/main/java/com/hangplan/controller` - HTTP endpoints
@@ -28,26 +29,33 @@
 ## Configuration Notes
 - Default app port: `8080`
 - Base DB: PostgreSQL (`spring.datasource.*`)
-- Schema update mode is Hibernate `ddl-auto: update`
+- Hibernate `ddl-auto: update` for dev drift; relational migrations belong in Flyway
 - Keep secrets and local credentials out of git.
 
-## Subscription Handling
-- `users.is_premium` is the current subscription feature flag.
-- Default value is `FALSE` (free tier by default).
-- Use this flag to gate real-time behavior only; avoid scattering tier checks.
+## Subscription Architecture
+- **`subscription_plans`** is the normalized catalog (`FREE`, `PAID_1Y`, …).
+- **`users.subscription_plan_id`** is a foreign key to **`subscription_plans`**.
+- **`users.subscription_start`** / **`users.subscription_end`** define the paid window when applicable.
+- **Always** validate paid feature access with **`subscription_end`** (see **`User.isActivePaidUser()`**). Do **not** reintroduce boolean premium flags on **`users`**.
+- Auth responses expose **`subscriptionPlan`** (plan **name**) and **`subscriptionEnd`** only—avoid leaking unrelated billing fields through DTOs.
 
 ## Real-time Architecture
 - WebSocket endpoint: `/ws`
 - Topic pattern: `/topic/events/{eventId}`
-- Premium users are allowed to subscribe.
-- Free users are rejected/ignored at subscription time.
-- Event changes are published by `EventRealtimeService` after event mutations.
+- WebSocket subscriptions require an **active paid** subscription (**`User.isActivePaidUser()`**).
+- **`FREE`** or expired **`subscription_end`** users are denied at subscribe time.
+- Event changes are published by **`EventRealtimeService`** after event mutations.
 
 ## Developer Notes
-- Do not reintroduce polling on API endpoints for event detail updates.
-- Keep WebSocket auth/subscription checks in dedicated real-time components.
-- Preserve manual refresh fallback behavior for free users.
-- This flag is temporary and will evolve into a fuller subscription system.
+- **WebSocket / real-time updates are a paid-tier feature** (active non-**FREE** plan with **`subscription_end` > now).
+- All server-side checks for that capability must use **`isActivePaidUser()`** (or equivalent logic), not removed legacy flags.
+- **`SubscriptionService.assignFreePlan`** runs for new signups (local + Google).
+- **`SubscriptionService.activatePaidPlan(user, planName)`** sets **`subscription_start`** / **`subscription_end`** from the plan’s **`durationDays`**—use this when integrating upgrades or billing webhooks later.
+
+### Future plans (not implemented yet)
+- Monthly subscriptions and trials
+- Stripe or similar pricing integration
+- Feature flags per plan row
 
 ## Coding Guidelines for Agents
 - Keep controllers thin; put logic in services.
@@ -61,4 +69,3 @@
 - Compile backend after Java changes:
   - `mvn -q compile -DskipTests`
 - If API contracts change, confirm frontend expectations are aligned.
-

@@ -45,8 +45,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             if (destination != null && destination.startsWith(EVENT_TOPIC_PREFIX)) {
                 User user = resolveUserFromPrincipal(accessor)
                         .orElseThrow(() -> new AccessDeniedException("Unauthorized subscription"));
-                if (!user.isPremium()) {
-                    throw new AccessDeniedException("Premium subscription required");
+                if (!user.isActivePaidUser()) {
+                    throw new AccessDeniedException("Active paid subscription required for real-time updates");
                 }
             }
         }

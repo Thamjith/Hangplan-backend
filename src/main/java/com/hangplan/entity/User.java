@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -43,7 +47,20 @@ public class User {
     @Builder.Default
     private AuthProvider provider = AuthProvider.LOCAL;
 
-    @Column(name = "is_premium", nullable = false, columnDefinition = "boolean default false")
-    @Builder.Default
-    private boolean isPremium = false;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "subscription_plan_id")
+    private SubscriptionPlan subscriptionPlan;
+
+    @Column(name = "subscription_start")
+    private LocalDateTime subscriptionStart;
+
+    @Column(name = "subscription_end")
+    private LocalDateTime subscriptionEnd;
+
+    public boolean isActivePaidUser() {
+        return subscriptionPlan != null
+                && !"FREE".equals(subscriptionPlan.getName())
+                && subscriptionEnd != null
+                && subscriptionEnd.isAfter(LocalDateTime.now());
+    }
 }

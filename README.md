@@ -32,6 +32,8 @@ Google OAuth redirect URLs:
 
 Register both in Google Cloud Console and set **`OAUTH2_REDIRECT_URI`** on the server when Spring sits behind nginx but still resolves requests as `localhost:8080` (otherwise Google gets the wrong `redirect_uri`).
 
+Schema migrations run automatically via **Flyway** on startup (`src/main/resources/db/migration`). Hibernate uses `ddl-auto: update` for additive drift in development; authoritative relational changes belong in Flyway scripts.
+
 ## Run in development
 
 ```bash
@@ -41,41 +43,66 @@ SPRING_PROFILES_ACTIVE=local mvn spring-boot:run
 
 API base URL: `http://localhost:8080`
 
-## Real-time Updates & Subscription Model
+## Real-time updates & subscription model
 
-HangPlan now supports two update modes:
+HangPlan supports two update modes on the client:
 
-- Free users (`is_premium = false`) use manual refresh.
-- Premium users (`is_premium = true`) can subscribe to real-time updates.
+- **Free (`FREE` plan):** manual refresh only; WebSocket subscriptions are rejected server-side.
+- **Paid (`PAID_1Y`, etc.):** WebSocket subscription to `/topic/events/{eventId}` while `subscription_end` is in the future.
 
-### Database flag
+### Subscription model
 
-Default users stay on the free tier.
+- Table **`subscription_plans`** defines catalog plans (`name`, optional `duration_days`, `description`).
+- Seeded plans:
+  - **`FREE`** — default; `duration_days` is null (no expiry window).
+  - **`PAID_1Y`** — `duration_days = 365`; access lasts until **`users.subscription_end`**.
+- **`users`** references a plan via **`subscription_plan_id`** and stores **`subscription_start`** / **`subscription_end`** for paid windows.
+
+Validity for premium (real-time) features is **not** a boolean on the user row: always evaluate **`subscription_end`** against now for non-`FREE` plans (see **`User.isActivePaidUser()`**).
+
+### Assigning plans in application code
+
+- New local and Google signups call **`SubscriptionService.assignFreePlan`** so every user starts on **`FREE`**.
+- To activate a paid window programmatically (e.g. future billing hooks):
+
+```java
+subscriptionService.activatePaidPlan(user, "PAID_1Y");
+```
+
+That sets **`subscription_start`** to now and **`subscription_end`** to now plus the plan’s **`duration_days`**.
+
+### Upgrading users manually (SQL)
+
+Example: grant one year from now:
 
 ```sql
-ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT FALSE;
+UPDATE users u
+SET subscription_plan_id = (SELECT id FROM subscription_plans WHERE name = 'PAID_1Y'),
+    subscription_start = NOW(),
+    subscription_end = NOW() + INTERVAL '365 days'
+WHERE u.email = 'you@example.com';
 ```
+
+Adjust the `WHERE` clause as needed (by `id`, etc.).
 
 ### WebSocket flow (high-level)
 
 - Endpoint: `/ws`
 - Topic pattern: `/topic/events/{eventId}`
-- Event mutations (join/decline/add expense/create) publish to this topic.
-- Subscription is gated server-side: only premium users can subscribe.
+- Event mutations publish to this topic.
+- **`WebSocketAuthChannelInterceptor`** allows `/topic/events/*` subscriptions only when **`user.isActivePaidUser()`** is true.
 
 ### Where logic lives
 
-- Premium flag: `User` entity + auth DTOs (`AuthDtos.UserDto` / `AuthService`).
-- WebSocket infra and premium gating:
-  - `config/WebSocketConfig`
-  - `realtime/WebSocketAuthChannelInterceptor`
-  - `realtime/EventRealtimeService`
-- Event broadcasts are triggered from `EventController`.
+- Plans and assignment: **`SubscriptionPlan`** entity, **`SubscriptionPlanRepository`**, **`SubscriptionService`**
+- User mapping and auth payloads: **`User`**, **`AuthService.toUserDto`**, **`AuthDtos.UserDto`**
+- WebSocket gating: **`realtime/WebSocketAuthChannelInterceptor`**
+- Broker config: **`config/WebSocketConfig`**
+- Broadcasts: **`realtime/EventRealtimeService`**, **`EventController`**
 
 ### Manual test checklist
 
-1. Login with a free user (`is_premium = false`) and open an event page.
-2. Confirm no real-time subscription is made; use manual refresh to see changes.
-3. Mark another user as premium (`is_premium = true`) in DB and log in.
-4. Open the same event on two premium sessions.
-5. Perform join/decline/add expense in one session and verify the other session updates immediately.
+1. Sign up or log in as a **`FREE`** user and open an event page.
+2. Confirm no WebSocket subscription for live updates; use **Refresh** to load changes.
+3. Set that user to **`PAID_1Y`** with a future **`subscription_end`** (SQL above or **`SubscriptionService.activatePaidPlan`**), then log in again.
+4. Open the same event in two sessions; perform join / decline / add expense in one and confirm the other updates immediately.

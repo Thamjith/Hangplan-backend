@@ -19,6 +19,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SubscriptionService subscriptionService;
 
     public AuthDtos.AuthResponse signup(AuthDtos.SignupRequest req) {
         if (userRepository.existsByEmailIgnoreCase(req.getEmail())) {
@@ -30,6 +31,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(req.getPassword()))
                 .provider(AuthProvider.LOCAL)
                 .build();
+        subscriptionService.assignFreePlan(user);
         user = userRepository.save(user);
         return toResponse(user);
     }
@@ -63,12 +65,14 @@ public class AuthService {
     }
 
     public static AuthDtos.UserDto toUserDto(User u) {
+        String planName = u.getSubscriptionPlan() != null ? u.getSubscriptionPlan().getName() : "FREE";
         return AuthDtos.UserDto.builder()
                 .id(u.getId().toString())
                 .name(u.getName())
                 .email(u.getEmail())
                 .provider(u.getProvider())
-                .premium(u.isPremium())
+                .subscriptionPlan(planName)
+                .subscriptionEnd(u.getSubscriptionEnd())
                 .build();
     }
 }
