@@ -58,7 +58,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         if (request.getSession(false) != null) {
             request.getSession().invalidate();
         }
-        String url = frontendUrl + "/auth?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String url = frontendUrl.replaceAll("/+$", "") + "/?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         getRedirectStrategy().sendRedirect(request, response, url);
     }
 }

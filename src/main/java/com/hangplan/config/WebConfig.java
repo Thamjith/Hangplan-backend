@@ -7,6 +7,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -18,7 +19,12 @@ public class WebConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration c = new CorsConfiguration();
-        c.setAllowedOriginPatterns(List.of(frontendUrl));
+        // SockJS and REST calls from local dev often use localhost while FRONTEND_URL still points at prod.
+        List<String> origins = new ArrayList<>(4);
+        origins.add(frontendUrl.trim());
+        origins.add("http://localhost:*");
+        origins.add("http://127.0.0.1:*");
+        c.setAllowedOriginPatterns(origins);
         c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         c.setAllowedHeaders(List.of("*"));
         c.setExposedHeaders(List.of("Authorization"));
