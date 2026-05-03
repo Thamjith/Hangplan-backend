@@ -86,7 +86,6 @@ public class EventService {
             if (participant.getStatus() == ParticipantStatus.ACCEPTED) {
                 participant.setStatus(ParticipantStatus.DECLINED);
                 participantRepository.save(participant);
-                reopenIfBelowCapacity(e);
                 return;
             }
             return;
@@ -104,6 +103,10 @@ public class EventService {
         Event e = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
 
+        if (e.getStatus() == EventStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is not available");
+        }
+
         Optional<Participant> existingOpt = participantRepository.findByEventIdAndUserId(eventId, auth.getId());
         if (existingOpt.isPresent()) {
             Participant existing = existingOpt.get();
@@ -117,10 +120,6 @@ public class EventService {
             return;
         }
 
-        if (e.getStatus() == EventStatus.CLOSED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is closed");
-        }
-
         User user = userRepository.getReferenceById(auth.getId());
         acceptNewAcceptedParticipant(e, () -> participantRepository.save(Participant.builder()
                 .event(e)
@@ -132,26 +131,38 @@ public class EventService {
     private void acceptNewAcceptedParticipant(Event e, Runnable saveAcceptedChange) {
         int acceptedBefore = participantRepository.countByEventAndStatus(e, ParticipantStatus.ACCEPTED);
         if (acceptedBefore >= e.getMaxParticipants()) {
-            e.setStatus(EventStatus.CLOSED);
-            eventRepository.save(e);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is full");
         }
-        if (e.getStatus() == EventStatus.CLOSED) {
-            e.setStatus(EventStatus.OPEN);
-            eventRepository.save(e);
-        }
         saveAcceptedChange.run();
-        int acceptedAfter = participantRepository.countByEventAndStatus(e, ParticipantStatus.ACCEPTED);
-        if (acceptedAfter >= e.getMaxParticipants()) {
-            e.setStatus(EventStatus.CLOSED);
-            eventRepository.save(e);
+    }
+
+    @Transactional
+    public void setAvailabilityClosed(UUID eventId, HangplanUserPrincipal auth) {
+        setAvailability(eventId, EventStatus.CLOSED, auth);
+    }
+
+    @Transactional
+    public void setAvailabilityOpen(UUID eventId, HangplanUserPrincipal auth) {
+        setAvailability(eventId, EventStatus.OPEN, auth);
+    }
+
+    private void setAvailability(UUID eventId, EventStatus status, HangplanUserPrincipal auth) {
+        Event e = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        if (!e.getCreatedBy().getId().equals(auth.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the organizer can change availability");
         }
+        e.setStatus(status);
+        eventRepository.save(e);
     }
 
     @Transactional
     public void addExpense(UUID eventId, EventDtos.CreateExpenseRequest req, HangplanUserPrincipal auth) {
         Event e = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        if (e.getStatus() == EventStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event is not available");
+        }
         Participant payer = participantRepository.findByEventIdAndUserId(eventId, auth.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Join the event first"));
         if (payer.getStatus() != ParticipantStatus.ACCEPTED) {
@@ -227,14 +238,6 @@ public class EventService {
                 .sharePerPerson(scale(share))
                 .balances(lines)
                 .build();
-    }
-
-    private void reopenIfBelowCapacity(Event e) {
-        int accepted = participantRepository.countByEventAndStatus(e, ParticipantStatus.ACCEPTED);
-        if (e.getStatus() == EventStatus.CLOSED && accepted < e.getMaxParticipants()) {
-            e.setStatus(EventStatus.OPEN);
-            eventRepository.save(e);
-        }
     }
 
     private String scale(BigDecimal v) {

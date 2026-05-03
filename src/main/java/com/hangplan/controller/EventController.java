@@ -66,6 +66,26 @@ public class EventController {
         eventRealtimeService.publishEventUpdated(id);
     }
 
+    @PostMapping("/events/{id}/close")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void close(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        eventService.setAvailabilityClosed(id, auth);
+        eventRealtimeService.publishEventUpdated(id);
+    }
+
+    @PostMapping("/events/{id}/open")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void open(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal HangplanUserPrincipal auth
+    ) {
+        eventService.setAvailabilityOpen(id, auth);
+        eventRealtimeService.publishEventUpdated(id);
+    }
+
     @PostMapping("/events/{id}/expenses")
     @ResponseStatus(HttpStatus.CREATED)
     public void addExpense(
