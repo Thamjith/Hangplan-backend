@@ -52,6 +52,9 @@ public class AuthService {
     }
 
     public AuthDtos.UserDto me(HangplanUserPrincipal principal) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
         User u = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         return toUserDto(u);
