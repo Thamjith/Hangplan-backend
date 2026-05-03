@@ -57,6 +57,18 @@ public class User {
     @Column(name = "subscription_end")
     private LocalDateTime subscriptionEnd;
 
+    /** E.164 international format, e.g. +14155552671 */
+    @Column(name = "phone_e164", length = 32)
+    private String phoneE164;
+
+    /** Approximate latitude for location-based features (user-consented). WGS84 */
+    @Column
+    private Double latitude;
+
+    /** Approximate longitude for location-based features (user-consented). WGS84 */
+    @Column
+    private Double longitude;
+
     public boolean isActivePaidUser() {
         return subscriptionPlan != null
                 && !"FREE".equals(subscriptionPlan.getName())

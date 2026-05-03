@@ -5,6 +5,7 @@ import com.hangplan.entity.AuthProvider;
 import java.time.LocalDateTime;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 
@@ -33,6 +34,25 @@ public final class AuthDtos {
         private String password;
     }
 
+    public enum LocationUpdateMode {
+        /** Store latitude and longitude from this request */
+        SET,
+        /** Remove stored coordinates */
+        CLEAR
+    }
+
+    @Data
+    public static class UpdateProfileRequest {
+        @NotBlank
+        private String name;
+        /** E.164; omit to leave unchanged, blank string clears */
+        @Size(max = 32)
+        private String phoneE164;
+        private LocationUpdateMode locationUpdate;
+        private Double latitude;
+        private Double longitude;
+    }
+
     @Data
     @Builder
     public static class UserDto {
@@ -43,6 +63,10 @@ public final class AuthDtos {
         /** Plan name, e.g. FREE, PAID_1Y */
         private String subscriptionPlan;
         private LocalDateTime subscriptionEnd;
+        /** E.164 when set */
+        private String phoneE164;
+        private Double latitude;
+        private Double longitude;
     }
 
     @Data

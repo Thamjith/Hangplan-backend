@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -60,6 +61,49 @@ public class AuthService {
         return toUserDto(u);
     }
 
+    @Transactional
+    public AuthDtos.UserDto updateProfile(HangplanUserPrincipal principal, AuthDtos.UpdateProfileRequest req) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        User u = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+
+        u.setName(req.getName().trim());
+
+        if (req.getPhoneE164() != null) {
+            String phone = req.getPhoneE164();
+            if (phone.isBlank()) {
+                u.setPhoneE164(null);
+            } else {
+                String t = phone.trim();
+                if (t.length() > 32) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone number too long");
+                }
+                u.setPhoneE164(t);
+            }
+        }
+
+        if (req.getLocationUpdate() == AuthDtos.LocationUpdateMode.CLEAR) {
+            u.setLatitude(null);
+            u.setLongitude(null);
+        } else if (req.getLocationUpdate() == AuthDtos.LocationUpdateMode.SET) {
+            Double lat = req.getLatitude();
+            Double lng = req.getLongitude();
+            if (lat == null || lng == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude and longitude are required when updating location");
+            }
+            if (lat < -90.0 || lat > 90.0 || lng < -180.0 || lng > 180.0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinates");
+            }
+            u.setLatitude(lat);
+            u.setLongitude(lng);
+        }
+
+        userRepository.save(u);
+        return toUserDto(u);
+    }
+
     private AuthDtos.AuthResponse toResponse(User user) {
         return AuthDtos.AuthResponse.builder()
                 .token(jwtService.createToken(user))
@@ -76,6 +120,9 @@ public class AuthService {
                 .provider(u.getProvider())
                 .subscriptionPlan(planName)
                 .subscriptionEnd(u.getSubscriptionEnd())
+                .phoneE164(u.getPhoneE164())
+                .latitude(u.getLatitude())
+                .longitude(u.getLongitude())
                 .build();
     }
 }
