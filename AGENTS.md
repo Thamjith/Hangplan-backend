@@ -5,7 +5,7 @@
 - Handles auth, events, participants, expenses, and summaries.
 
 ## Tech Stack
-- Java 25
+- Java 21
 - Spring Boot 3.5
 - Spring Web, Data JPA, Security, OAuth2 Client, Validation
 - PostgreSQL

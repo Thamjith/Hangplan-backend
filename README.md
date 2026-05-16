@@ -4,7 +4,7 @@ Spring Boot API for HangPlan.
 
 ## Requirements
 
-- Java 25 (set `JAVA_HOME` to JDK 25)
+- Java 21 (set `JAVA_HOME` to JDK 21)
 - Maven 3.9+
 - PostgreSQL
 
